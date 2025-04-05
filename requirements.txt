@@ -3,4 +3,3 @@ pandas
 altair
 datetime
 numpy
-math
