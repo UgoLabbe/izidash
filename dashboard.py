@@ -10,7 +10,7 @@ def check_password():
     """Returns True if the user has entered the correct password."""
     def password_entered():
         """Checks if the entered password matches the hardcoded password."""
-        if st.session_state["password"] == "":  
+        if st.session_state["password"] == "izispring25":  
             st.session_state["authentication_status"] = True
             del st.session_state["password"]  # Clear the password from session state
         else:
