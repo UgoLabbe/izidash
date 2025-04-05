@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
 from datetime import datetime
 import numpy as np
-import math  # For radar chart calculations
+
+# For Plotly Radar Chart
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="LoL Team Objectives Dashboard", layout="wide")
 
@@ -214,58 +215,28 @@ if check_password():
                 num_cols = len(all_roles_presence)
                 cols = st.columns(num_cols)
                 roles = list(all_roles_presence.keys())
+                presence_values = list(all_roles_presence.values())
                 for i, role in enumerate(roles):
                     cols[i].metric(f"{selected_team} {role} Presence (Avg)", f"{all_roles_presence[role]:.2f}%")
 
-                # Radar Chart
+                # --- Plotly Radar Chart ---
                 st.subheader("Player Presence Radar Chart")
-                radar_data = pd.DataFrame({
-                    'role': roles,
-                    'presence': list(all_roles_presence.values())
-                })
+                fig = go.Figure(data=[go.Scatterpolar(
+                    r=presence_values + [presence_values[0]],
+                    theta=roles + [roles[0]],
+                    fill='toself',
+                    name=selected_team
+                )])
 
-                # Angle calculations for the radar chart
-                num_vars = len(roles)
-                angles = [n / float(num_vars) * 2 * math.pi for n in range(num_vars)]
-                angles += angles[:1]
-
-                # Create the base chart
-                base = alt.Chart(radar_data).encode(
-                    theta=alt.Theta("angle", stack=True)
-                ).transform_calculate(
-                    angle="datum.index / {} * 2 * PI".format(num_vars)
+                fig.update_layout(
+                    polar=dict(
+                        radialaxis=dict(
+                            visible=True,
+                            range=[0, 100]
+                        )),
+                    showlegend=False
                 )
-
-                # Create the radar chart
-                radar = base.mark_line(point=True).encode(
-                    theta=alt.Theta("angle"),
-                    radius=alt.Radius("presence", scale=alt.Scale(range=[0, 100])),
-                    color=alt.value("steelblue"),
-                    order=alt.Order("index")
-                )
-
-                # Create the text labels
-                text = base.mark_text(align='center', baseline='line').encode(
-                    text='role',
-                    theta=alt.Theta("angle"),
-                    radius=alt.value(110)  # Adjust for label positioning
-                )
-
-                # Combine the layers
-                chart = alt.layer(radar, text).properties(
-                    width=400,
-                    height=400
-                ).configure_axis_theta(
-                    grid=True
-                ).configure_axis_radius(
-                    grid=True,
-                    domain=False,
-                    labels=False,
-                    title=None,
-                    tickCount=6
-                )
-
-                st.altair_chart(chart, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True)
 
         st.subheader("Data Table")
         st.dataframe(filtered_df)
