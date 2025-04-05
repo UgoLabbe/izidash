@@ -1,0 +1,16 @@
+grid gg acces Username: matescz12@gmail.com
+Password: KEE@z4n%wN8pfue
+https://lol.grid.gg/login?requestUrl=/
+
+MOST IMPORTANT:
+- lvl 1 data / 1min (position, wards)
+- number player @ grubs/drake
+- timing drake etc...
+- proxi jungle/sup, déplacement sup
+- heatmap wards to 10 min, between 10 and 15, between 15 and 20
+
+LESS IMPORTANT:
+- mi split: retro analyse de nos games (lvl 1)
+- OP soloQ and competitif
+- build opti patch
+- create info by players (competitive vs soloQ)
