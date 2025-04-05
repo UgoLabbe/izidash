@@ -3,6 +3,7 @@ import pandas as pd
 import altair as alt
 from datetime import datetime
 import numpy as np
+import math  # For radar chart calculations
 
 st.set_page_config(page_title="LoL Team Objectives Dashboard", layout="wide")
 
@@ -10,7 +11,7 @@ def check_password():
     """Returns True if the user has entered the correct password."""
     def password_entered():
         """Checks if the entered password matches the hardcoded password."""
-        if st.session_state["password"] == "izispring25":  
+        if st.session_state["password"] == "izispring25":
             st.session_state["authentication_status"] = True
             del st.session_state["password"]  # Clear the password from session state
         else:
@@ -32,7 +33,7 @@ if check_password():
     # Your main Streamlit application code goes here
     st.title("LoL Team Objectives Dashboard")
     st.write("Welcome to the dashboard!")
-    
+
     # Load data
     @st.cache_data
     def load_data():
@@ -215,6 +216,56 @@ if check_password():
                 roles = list(all_roles_presence.keys())
                 for i, role in enumerate(roles):
                     cols[i].metric(f"{selected_team} {role} Presence (Avg)", f"{all_roles_presence[role]:.2f}%")
+
+                # Radar Chart
+                st.subheader("Player Presence Radar Chart")
+                radar_data = pd.DataFrame({
+                    'role': roles,
+                    'presence': list(all_roles_presence.values())
+                })
+
+                # Angle calculations for the radar chart
+                num_vars = len(roles)
+                angles = [n / float(num_vars) * 2 * math.pi for n in range(num_vars)]
+                angles += angles[:1]
+
+                # Create the base chart
+                base = alt.Chart(radar_data).encode(
+                    theta=alt.Theta("angle", stack=True)
+                ).transform_calculate(
+                    angle="datum.index / {} * 2 * PI".format(num_vars)
+                )
+
+                # Create the radar chart
+                radar = base.mark_line(point=True).encode(
+                    theta=alt.Theta("angle"),
+                    radius=alt.Radius("presence", scale=alt.Scale(range=[0, 100])),
+                    color=alt.value("steelblue"),
+                    order=alt.Order("index")
+                )
+
+                # Create the text labels
+                text = base.mark_text(align='center', baseline='line').encode(
+                    text='role',
+                    theta=alt.Theta("angle"),
+                    radius=alt.value(110)  # Adjust for label positioning
+                )
+
+                # Combine the layers
+                chart = alt.layer(radar, text).properties(
+                    width=400,
+                    height=400
+                ).configure_axis_theta(
+                    grid=True
+                ).configure_axis_radius(
+                    grid=True,
+                    domain=False,
+                    labels=False,
+                    title=None,
+                    tickCount=6
+                )
+
+                st.altair_chart(chart, use_container_width=True)
 
         st.subheader("Data Table")
         st.dataframe(filtered_df)
