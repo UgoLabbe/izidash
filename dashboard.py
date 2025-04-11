@@ -278,39 +278,86 @@ if check_password():
         col4.metric("Objective Control Rate (OCR)", f"{ocr:.1f}%", help="Percentage of objectives secured by the selected team out of all objectives secured by either the selected team or the opponent(s).")
 
         # --- 3. Timing Distribution Plot ---
-        st.subheader("Timing Distribution (Taken)")
+        st.subheader("Timing Distribution (Taken by Selected Team)") # Clarified title
+        taken_mask = (df_display['taken'] == selected_team) # Re-ensure mask is defined here
         taken_timings_df = df_display.loc[taken_mask, 'timing_seconds'].dropna()
+
         if not taken_timings_df.empty:
-             # Create hover text in MM:SS format
-             def format_seconds(sec):
-                 if pd.isna(sec): return "N/A"
-                 minutes = int(sec // 60)
-                 seconds = int(sec % 60)
-                 return f"{minutes:02d}:{seconds:02d}"
+            # --- Helper function for formatting ---
+            def format_seconds(sec):
+                if pd.isna(sec) or not isinstance(sec, (int, float)): return "N/A"
+                minutes = int(sec // 60)
+                seconds = int(sec % 60)
+                return f"{minutes:02d}:{seconds:02d}"
 
-             taken_timings_df_formatted = taken_timings_df.apply(format_seconds)
+            # --- Create Histogram ---
+            fig_hist = px.histogram(
+                x=taken_timings_df,
+                nbins=max(10, int(len(taken_timings_df)**0.5)), # Auto-adjust bins
+            )
 
-             fig_hist = px.histogram(
-                 x=taken_timings_df,
-                 nbins=max(10, int(len(taken_timings_df)**0.5)), # Auto-adjust bins somewhat
-                 # Use customdata for hover template
-                 # custom_data=[taken_timings_df_formatted] # Requires Plotly >= 5.x for custom_data in px.histogram easily
-             )
-             # Update hover template to show MM:SS (might need adjustment based on plotly version)
-             # fig_hist.update_traces(hovertemplate='Timing: %{customdata[0]}<br>Count: %{y}<extra></extra>')
-             fig_hist.update_layout(
-                 xaxis_title="Timing (seconds)",
-                 yaxis_title="Number of Objectives Taken",
-                 bargap=0.1
-             )
-             # Add mean line
-             avg_taken_timing = taken_timings_df.mean()
-             fig_hist.add_vline(x=avg_taken_timing, line_dash="dash", line_color="red", annotation_text=f"Mean: {format_seconds(avg_taken_timing)}")
+            # --- Customize X-axis Ticks ---
+            min_time_sec = 0 # Start axis at 00:00
+            max_time_sec = taken_timings_df.max()
+            # Determine a reasonable tick interval (e.g., every 60s, 120s, 300s)
+            if max_time_sec <= 300: # Up to 5 mins
+                tick_interval_sec = 30
+            elif max_time_sec <= 900: # Up to 15 mins
+                tick_interval_sec = 60
+            elif max_time_sec <= 1800: # Up to 30 mins
+                tick_interval_sec = 120 # Every 2 mins
+            elif max_time_sec <= 3600: # Up to 60 mins
+                 tick_interval_sec = 300 # Every 5 mins
+            else: # Very long games
+                 tick_interval_sec = 600 # Every 10 mins
 
-             st.plotly_chart(fig_hist, use_container_width=True)
+            # Generate tick values (positions in seconds)
+            tickvals = np.arange(min_time_sec, max_time_sec + tick_interval_sec, tick_interval_sec)
+            # Generate corresponding MM:SS labels
+            ticktext = [format_seconds(val) for val in tickvals]
+
+            # --- Customize Hover Data ---
+            # The default hover shows the bin range. We'll try to add the formatted center/start.
+            # This is an approximation as hover data for histograms is complex.
+            fig_hist.update_traces(
+                 hovertemplate="<b>Timing Bin:</b> %{x}<br><b>Count:</b> %{y}<extra></extra>"
+                 # Note: %{x} in histogram hover often refers to the bin range, not a single value.
+                 # Getting precise MM:SS in hover for the *range* requires more advanced callbacks or manipulation.
+                 # For simplicity, this template shows the raw second range. Let's update layout title instead.
+            )
+
+
+            # --- Update Layout ---
+            fig_hist.update_layout(
+                xaxis_title="Timing (MM:SS)", # Updated axis title
+                yaxis_title="Number of Objectives Taken",
+                bargap=0.1,
+                xaxis=dict(
+                    tickmode='array',
+                    tickvals=tickvals,
+                    ticktext=ticktext
+                ),
+                hoverlabel=dict( # Improve hover label appearance
+                    bgcolor="white",
+                    font_size=12,
+                    # font_family="Rockwell" # Example font
+                )
+            )
+
+            # --- Add Mean Line with Formatted Annotation ---
+            avg_taken_timing_sec = taken_timings_df.mean()
+            avg_taken_timing_formatted = format_seconds(avg_taken_timing_sec)
+            fig_hist.add_vline(
+                 x=avg_taken_timing_sec,
+                 line_dash="dash",
+                 line_color="red",
+                 annotation_text=f"Mean: {avg_taken_timing_formatted}",
+                 annotation_position="top right" # Position annotation
+                 )
+
+            st.plotly_chart(fig_hist, use_container_width=True)
         else:
              st.info("No objectives taken by the selected team with timing data to plot distribution.")
-
 
         # --- Player Presence Analysis ---
         st.subheader("Average Player Presence (During Objective Instance)")
