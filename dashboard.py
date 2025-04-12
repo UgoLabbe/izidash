@@ -251,32 +251,6 @@ if check_password():
         percentage_taken = (taken_count / total_objectives_count * 100) if total_objectives_count > 0 else 0
         col3.metric("Taken Rate", f"{percentage_taken:.1f}%", help="Percentage of these objectives secured by the selected team.")
 
-        # --- 2. Metric: Objective Control Rate (OCR) ---
-        # Requires knowing opponent's name when they take it
-        # Assumption: 'taken' contains the name of the team who took it.
-        # Find instances taken by *anyone* other than the selected team (could be opponent or neither if data allows)
-        # More robustly: count objectives taken by the selected team vs objectives taken by the opponent *in games selected team played*
-        opponent_team_name = None
-        if selected_opponent != "All Opponents":
-            opponent_team_name = selected_opponent
-        elif side == "Blue" and not df_display.empty:
-            opponent_team_name = df_display['Red'].iloc[0] # Get opponent from first row (assuming consistent opponent if not 'All')
-        elif side == "Red" and not df_display.empty:
-            opponent_team_name = df_display['Blue'].iloc[0]
-        # If side is "All Sides" and opponent is "All Opponents", OCR is less clearly defined for the whole set.
-        # We calculate OCR based on *decided* objectives (taken by selected team OR assumed opponent)
-
-        taken_by_opponent_count = 0
-        if opponent_team_name: # If we have a single opponent context
-            taken_by_opponent_count = (df_display['taken'] == opponent_team_name).sum()
-        else: # If 'All Opponents', sum takes by anyone *not* the selected team
-             taken_by_opponent_count = (~taken_mask & df_display['taken'].notna() & (df_display['taken'] != '')).sum()
-
-
-        total_decided_objectives = taken_count + taken_by_opponent_count
-        ocr = (taken_count / total_decided_objectives * 100) if total_decided_objectives > 0 else 0
-        col4.metric("Objective Control Rate (OCR)", f"{ocr:.1f}%", help="Percentage of objectives secured by the selected team out of all objectives secured by either the selected team or the opponent(s).")
-
         # --- 3. Timing Distribution Plot ---
         st.subheader("Timing Distribution (Taken by Selected Team)") # Clarified title
         taken_mask = (df_display['taken'] == selected_team) # Re-ensure mask is defined here
